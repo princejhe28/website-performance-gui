@@ -1,0 +1,7 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/results/route": "/api/results",
+  "/api/cron/route": "/api/cron",
+  "/page": "/",
+  "/dashboard/page": "/dashboard"
+}
