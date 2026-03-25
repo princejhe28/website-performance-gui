@@ -24,19 +24,19 @@ function buildMetrics(summary: RunSummary): GraphiteMetric[] {
     const prefix = `psi.${host}.${path}.${result.strategy}`;
 
     metrics.push(
-      { name: `${prefix}.performance_score`, value: result.performanceScore, interval: 60, time: timestampSec },
-      { name: `${prefix}.lcp_ms`, value: result.lcpMs, interval: 60, time: timestampSec },
-      { name: `${prefix}.cls`, value: result.cls * 1000, interval: 60, time: timestampSec },
-      { name: `${prefix}.tbt_ms`, value: result.tbtMs, interval: 60, time: timestampSec },
-      { name: `${prefix}.pass`, value: result.status === "pass" ? 1 : 0, interval: 60, time: timestampSec }
+      { name: `${prefix}.performance_score`, value: result.performanceScore, interval: 21600, time: timestampSec },
+      { name: `${prefix}.lcp_ms`, value: result.lcpMs, interval: 21600, time: timestampSec },
+      { name: `${prefix}.cls`, value: result.cls, interval: 21600, time: timestampSec },
+      { name: `${prefix}.tbt_ms`, value: result.tbtMs, interval: 21600, time: timestampSec },
+      { name: `${prefix}.pass`, value: result.status === "pass" ? 1 : 0, interval: 21600, time: timestampSec }
     );
   }
 
   // Run-level summary metrics
   metrics.push(
-    { name: "psi.summary.total_checks", value: summary.totalChecks, interval: 60, time: timestampSec },
-    { name: "psi.summary.pass_count", value: summary.passCount, interval: 60, time: timestampSec },
-    { name: "psi.summary.fail_count", value: summary.failCount, interval: 60, time: timestampSec }
+    { name: "psi.summary.total_checks", value: summary.totalChecks, interval: 21600, time: timestampSec },
+    { name: "psi.summary.pass_count", value: summary.passCount, interval: 21600, time: timestampSec },
+    { name: "psi.summary.fail_count", value: summary.failCount, interval: 21600, time: timestampSec }
   );
 
   return metrics;

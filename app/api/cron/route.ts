@@ -20,53 +20,49 @@ async function runChecks(): Promise<RunSummary> {
   const generatedAt = new Date().toISOString();
   const runId = `vercel-${generatedAt}`;
 
-  const results: CheckResult[] = [];
+  const pairs = urls.flatMap((url) => strategies.map((strategy) => ({ url, strategy })));
+
+  const settled = await Promise.allSettled(
+    pairs.map(async ({ url, strategy }) => {
+      const baseMetrics = await getPsiMetrics(url, strategy);
+      const issues = findIssues(baseMetrics);
+      const status = issues.length > 0 ? "fail" : "pass";
+      return { ...baseMetrics, status, issues, checkedAt: generatedAt } as CheckResult;
+    })
+  );
+
+  const results: CheckResult[] = settled.map((outcome, i) => {
+    if (outcome.status === "fulfilled") return outcome.value;
+    const { url, strategy } = pairs[i];
+    const parsed = new URL(url);
+    return {
+      url,
+      hostname: parsed.hostname,
+      path: parsed.pathname || "/",
+      strategy,
+      performanceScore: 0,
+      lcpMs: 0,
+      cls: 0,
+      tbtMs: 0,
+      status: "fail",
+      issues: [outcome.reason instanceof Error ? outcome.reason.message : "Unknown PSI check error"],
+      checkedAt: generatedAt,
+    } as CheckResult;
+  });
+
   let asanaTasksCreated = 0;
-
-  for (const url of urls) {
-    for (const strategy of strategies) {
-      try {
-        const baseMetrics = await getPsiMetrics(url, strategy);
-        const issues = findIssues(baseMetrics);
-        const status = issues.length > 0 ? "fail" : "pass";
-
-        const result: CheckResult = {
-          ...baseMetrics,
-          status,
-          issues,
-          checkedAt: generatedAt,
-        };
-
-        results.push(result);
-
-        if (status === "fail") {
+  await Promise.allSettled(
+    results
+      .filter((r) => r.status === "fail")
+      .map(async (result) => {
+        try {
           const created = await createAsanaTask(result);
           if (created) asanaTasksCreated += 1;
+        } catch (asanaError) {
+          console.error("Asana task creation failed:", asanaError);
         }
-      } catch (error) {
-        const parsed = new URL(url);
-
-        const fallback: CheckResult = {
-          url,
-          hostname: parsed.hostname,
-          path: parsed.pathname || "/",
-          strategy,
-          performanceScore: 0,
-          lcpMs: 0,
-          cls: 0,
-          tbtMs: 0,
-          status: "fail",
-          issues: [error instanceof Error ? error.message : "Unknown PSI check error"],
-          checkedAt: generatedAt,
-        };
-
-        results.push(fallback);
-
-        const created = await createAsanaTask(fallback);
-        if (created) asanaTasksCreated += 1;
-      }
-    }
-  }
+      })
+  );
 
   const passCount = results.filter((r) => r.status === "pass").length;
   const failCount = results.filter((r) => r.status === "fail").length;
