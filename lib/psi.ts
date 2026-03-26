@@ -24,10 +24,24 @@ export async function getPsiMetrics(
   endpoint.searchParams.set("category", "performance");
   endpoint.searchParams.set("key", apiKey);
 
-  const res = await fetch(endpoint.toString(), {
-    method: "GET",
-    cache: "no-store",
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45_000);
+
+  let res: Response;
+  try {
+    res = await fetch(endpoint.toString(), {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    const msg = err instanceof Error && err.name === "AbortError"
+      ? `PSI request timed out for ${url} (${strategy})`
+      : `PSI request failed for ${url} (${strategy}): ${err instanceof Error ? err.message : err}`;
+    throw new Error(msg);
+  }
+  clearTimeout(timer);
 
   if (!res.ok) {
     const body = await res.text();
