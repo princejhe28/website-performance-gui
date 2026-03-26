@@ -85,12 +85,23 @@ export async function GET(req: Request) {
 
   try {
     const summary = await runChecks();
-    await saveLatestRun(summary);
-    await saveHistoryRun(summary);
-    await pruneHistory(20);
-    await pushMetricsToGrafana(summary);
+    const warnings: string[] = [];
 
-    return Response.json({ ok: true, summary });
+    try {
+      await saveLatestRun(summary);
+      await saveHistoryRun(summary);
+      await pruneHistory(20);
+    } catch (err) {
+      warnings.push(`Blob: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    try {
+      await pushMetricsToGrafana(summary);
+    } catch (err) {
+      warnings.push(`Grafana: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    return Response.json({ ok: true, summary, warnings });
   } catch (error) {
     return Response.json(
       {
