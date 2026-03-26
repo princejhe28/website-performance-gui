@@ -3,7 +3,7 @@ import type { RunSummary } from "@/lib/types";
 
 export async function saveLatestRun(summary: RunSummary) {
   await put("perf/latest.json", JSON.stringify(summary, null, 2), {
-    access: "public",
+    access: "private",
     addRandomSuffix: false,
     contentType: "application/json",
   });
@@ -13,7 +13,7 @@ export async function saveHistoryRun(summary: RunSummary) {
   const safeRunId = summary.runId.replace(/[^a-zA-Z0-9-_:.]/g, "-");
 
   await put(`perf/history/${safeRunId}.json`, JSON.stringify(summary, null, 2), {
-    access: "public",
+    access: "private",
     addRandomSuffix: false,
     contentType: "application/json",
   });
@@ -25,7 +25,10 @@ export async function getLatestRun(): Promise<RunSummary | null> {
 
   if (!latest?.url) return null;
 
-  const res = await fetch(latest.url, { cache: "no-store" });
+  const res = await fetch(latest.url, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+  });
   if (!res.ok) return null;
 
   return (await res.json()) as RunSummary;
