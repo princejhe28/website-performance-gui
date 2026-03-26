@@ -2,6 +2,7 @@ import { getLatestRun } from "@/lib/blob";
 import type { CheckResult, RunSummary } from "@/lib/types";
 import { Suspense } from "react";
 import Filters from "./filters";
+import ThemeToggle from "./theme-toggle";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ function scoreRingStyle(score: number): React.CSSProperties {
     width: 48,
     height: 48,
     borderRadius: "50%",
-    background: `conic-gradient(${scoreColor(score)} ${score * 3.6}deg, #e5e7eb 0deg)`,
+    background: `conic-gradient(${scoreColor(score)} ${score * 3.6}deg, var(--ring-track) 0deg)`,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -42,7 +43,7 @@ function ScoreRing({ score }: { score: number }) {
           width: 36,
           height: 36,
           borderRadius: "50%",
-          background: "#fff",
+          background: "var(--score-ring-inner)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -107,15 +108,15 @@ function SummaryCard({
   return (
     <div
       style={{
-        background: "#fff",
+        background: "var(--bg-card)",
         borderRadius: 16,
         padding: "20px 24px",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
+        boxShadow: "var(--shadow)",
         borderTop: `4px solid ${accent ?? "#6366f1"}`,
       }}
     >
-      <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 6, fontWeight: 500 }}>{label}</div>
-      <div style={{ fontSize: 32, fontWeight: 800, color: "#111827" }}>{value}</div>
+      <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 6, fontWeight: 500 }}>{label}</div>
+      <div style={{ fontSize: 32, fontWeight: 800, color: "var(--text-primary)" }}>{value}</div>
     </div>
   );
 }
@@ -131,8 +132,8 @@ export default async function DashboardPage({
   if (!summary) {
     return (
       <main style={{ maxWidth: 1200, margin: "60px auto", padding: "0 24px" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827" }}>Website Performance Dashboard</h1>
-        <p style={{ color: "#6b7280" }}>No results yet. Run the cron endpoint once first.</p>
+        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}>Website Performance Dashboard</h1>
+        <p style={{ color: "var(--text-secondary)" }}>No results yet. Run the cron endpoint once first.</p>
       </main>
     );
   }
@@ -163,10 +164,10 @@ export default async function DashboardPage({
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 32 }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: "#111827", margin: 0 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>
             Website Performance Dashboard
           </h1>
-          <p style={{ color: "#6b7280", margin: "4px 0 0", fontSize: 14 }}>
+          <p style={{ color: "var(--text-secondary)", margin: "4px 0 0", fontSize: 14 }}>
             Last run: {new Date(summary.generatedAt).toLocaleString()}
           </p>
         </div>
@@ -182,6 +183,7 @@ export default async function DashboardPage({
         >
           {passRate}% Pass Rate
         </div>
+        <ThemeToggle />
       </div>
 
       {/* Summary cards */}
@@ -207,17 +209,17 @@ export default async function DashboardPage({
       {/* Results table */}
       <div
         style={{
-          background: "#fff",
+          background: "var(--bg-card)",
           borderRadius: 16,
-          boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
+          boxShadow: "var(--shadow)",
           overflowX: "auto",
         }}
       >
-        <div style={{ padding: "20px 24px 12px", borderBottom: "1px solid #f3f4f6" }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#111827" }}>
+        <div style={{ padding: "20px 24px 12px", borderBottom: "1px solid var(--border)" }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
             Check Results
             {filtered.length < summary.results.length && (
-              <span style={{ fontSize: 13, fontWeight: 400, color: "#9ca3af", marginLeft: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 400, color: "var(--text-muted)", marginLeft: 8 }}>
                 (showing {filtered.length} of {summary.results.length})
               </span>
             )}
@@ -225,7 +227,7 @@ export default async function DashboardPage({
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ background: "#f9fafb" }}>
+            <tr style={{ background: "var(--bg-thead)" }}>
               <th style={th}>URL</th>
               <th style={th}>Strategy</th>
               <th style={{ ...th, textAlign: "center" }}>Score</th>
@@ -239,7 +241,7 @@ export default async function DashboardPage({
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#9ca3af", fontSize: 14 }}>
+                <td colSpan={8} style={{ padding: 32, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
                   No results match your filters.
                 </td>
               </tr>
@@ -248,8 +250,8 @@ export default async function DashboardPage({
                 <tr
                   key={`${result.url}-${result.strategy}-${index}`}
                   style={{
-                    borderTop: "1px solid #f3f4f6",
-                    background: result.status === "fail" ? "#fffbfb" : "#fff",
+                    borderTop: "1px solid var(--border)",
+                    background: result.status === "fail" ? "var(--bg-fail-row)" : "var(--bg-card)",
                   }}
                 >
                   <td style={td}>
@@ -257,7 +259,7 @@ export default async function DashboardPage({
                       href={result.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ color: "#4f46e5", textDecoration: "none", fontWeight: 500, fontSize: 13 }}
+                      style={{ color: "var(--link)", textDecoration: "none", fontWeight: 500, fontSize: 13 }}
                     >
                       {result.hostname}{result.path !== "/" ? result.path : ""}
                     </a>
@@ -286,7 +288,7 @@ export default async function DashboardPage({
                         ))}
                       </ul>
                     ) : (
-                      <span style={{ color: "#9ca3af", fontSize: 13 }}>—</span>
+                      <span style={{ color: "var(--text-muted)", fontSize: 13 }}>—</span>
                     )}
                   </td>
                 </tr>
@@ -303,11 +305,11 @@ export default async function DashboardPage({
               alignItems: "center",
               justifyContent: "space-between",
               padding: "14px 24px",
-              borderTop: "1px solid #f3f4f6",
+              borderTop: "1px solid var(--border)",
               fontSize: 14,
             }}
           >
-            <span style={{ color: "#6b7280" }}>
+            <span style={{ color: "var(--text-secondary)" }}>
               Page {currentPage} of {totalPages} &mdash; {filtered.length} results
             </span>
             <div style={{ display: "flex", gap: 8 }}>
@@ -371,8 +373,8 @@ function PageLink({
       href={`/dashboard?${p.toString()}`}
       style={{
         ...pageBtnStyle,
-        background: active ? "#6366f1" : "#f3f4f6",
-        color: active ? "#fff" : "#374151",
+        background: active ? "#6366f1" : "var(--page-btn-bg)",
+        color: active ? "#fff" : "var(--page-btn-color)",
         fontWeight: active ? 700 : 500,
       }}
     >
@@ -387,8 +389,8 @@ const pageBtnStyle: React.CSSProperties = {
   borderRadius: 8,
   fontSize: 13,
   textDecoration: "none",
-  background: "#f3f4f6",
-  color: "#374151",
+  background: "var(--page-btn-bg)",
+  color: "var(--page-btn-color)",
 };
 
 const th: React.CSSProperties = {
@@ -396,7 +398,7 @@ const th: React.CSSProperties = {
   textAlign: "left",
   fontSize: 13,
   fontWeight: 600,
-  color: "#6b7280",
+  color: "var(--text-secondary)",
   whiteSpace: "nowrap",
 };
 

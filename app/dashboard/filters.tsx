@@ -33,10 +33,10 @@ export default function Filters({ total }: { total: number }) {
         flexWrap: "wrap",
         gap: 12,
         alignItems: "center",
-        background: "#fff",
+        background: "var(--bg-card)",
         padding: "16px 20px",
         borderRadius: 16,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
+        boxShadow: "var(--shadow)",
         marginBottom: 20,
       }}
     >
@@ -49,11 +49,13 @@ export default function Filters({ total }: { total: number }) {
         style={{
           padding: "8px 14px",
           borderRadius: 8,
-          border: "1px solid #e5e7eb",
+          border: "1px solid var(--border-strong)",
           fontSize: 14,
           outline: "none",
           minWidth: 220,
           flex: 1,
+          background: "var(--bg-card)",
+          color: "var(--text-primary)",
         }}
       />
 
@@ -79,7 +81,7 @@ export default function Filters({ total }: { total: number }) {
         <option value="desktop">Desktop only</option>
       </select>
 
-      <span style={{ fontSize: 13, color: "#9ca3af", marginLeft: "auto" }}>
+      <span style={{ fontSize: 13, color: "var(--text-muted)", marginLeft: "auto" }}>
         {total} result{total !== 1 ? "s" : ""}
       </span>
     </div>
@@ -89,9 +91,10 @@ export default function Filters({ total }: { total: number }) {
 const selectStyle: React.CSSProperties = {
   padding: "8px 14px",
   borderRadius: 8,
-  border: "1px solid #e5e7eb",
+  border: "1px solid var(--border-strong)",
   fontSize: 14,
-  background: "#fff",
+  background: "var(--bg-card)",
+  color: "var(--text-primary)",
   cursor: "pointer",
   outline: "none",
 };
