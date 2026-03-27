@@ -2,6 +2,7 @@ import { getLatestRun } from "@/lib/blob";
 import type { CheckResult, RunSummary } from "@/lib/types";
 import { Suspense } from "react";
 import Filters from "./filters";
+import LogoutButton from "./logout-button";
 import ThemeToggle from "./theme-toggle";
 
 export const dynamic = "force-dynamic";
@@ -82,16 +83,19 @@ function StrategyBadge({ strategy }: { strategy: CheckResult["strategy"] }) {
   return (
     <span
       style={{
-        display: "inline-block",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
         padding: "3px 10px",
         borderRadius: 999,
         fontSize: 12,
         fontWeight: 600,
+        minWidth: 90,
         background: mobile ? "#eff6ff" : "#f5f3ff",
         color: mobile ? "#2563eb" : "#7c3aed",
       }}
     >
-      {mobile ? "📱 Mobile" : "🖥 Desktop"}
+      {mobile ? "📱 Mobile" : "🖥️ Desktop"}
     </span>
   );
 }
@@ -183,7 +187,10 @@ export default async function DashboardPage({
         >
           {passRate}% Pass Rate
         </div>
-        <ThemeToggle />
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <ThemeToggle />
+          <LogoutButton />
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -229,7 +236,7 @@ export default async function DashboardPage({
           <thead>
             <tr style={{ background: "var(--bg-thead)" }}>
               <th style={th}>URL</th>
-              <th style={th}>Strategy</th>
+              <th style={{ ...th, textAlign: "center" }}>Strategy</th>
               <th style={{ ...th, textAlign: "center" }}>Score</th>
               <th style={th}>LCP</th>
               <th style={th}>CLS</th>
@@ -264,7 +271,7 @@ export default async function DashboardPage({
                       {result.hostname}{result.path !== "/" ? result.path : ""}
                     </a>
                   </td>
-                  <td style={td}><StrategyBadge strategy={result.strategy} /></td>
+                  <td style={{ ...td, textAlign: "center" }}><StrategyBadge strategy={result.strategy} /></td>
                   <td style={{ ...td, textAlign: "center" }}>
                     <div style={{ display: "flex", justifyContent: "center" }}>
                       <ScoreRing score={result.performanceScore} />
