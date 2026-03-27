@@ -34,6 +34,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Redirect authenticated users away from the login page
+  // (but not from set-password — they need to be authenticated to call updateUser)
   if (user && pathname === "/") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
