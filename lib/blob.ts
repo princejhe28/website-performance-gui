@@ -37,14 +37,6 @@ export async function getHistoryForHostname(hostname: string): Promise<HistoryEn
   );
 }
 
-export async function pruneHistory(keep = 20) {
-  await put("perf/latest.json", JSON.stringify(summary, null, 2), {
-    access: "private",
-    addRandomSuffix: false,
-    contentType: "application/json",
-  });
-}
-
 export async function saveHistoryRun(summary: RunSummary) {
   const safeRunId = summary.runId.replace(/[^a-zA-Z0-9-_:.]/g, "-");
 
