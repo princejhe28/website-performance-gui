@@ -41,6 +41,7 @@ export async function saveLatestRun(summary: RunSummary) {
   await put("perf/latest.json", JSON.stringify(summary, null, 2), {
     access: "private",
     addRandomSuffix: false,
+    allowOverwrite: true,
     contentType: "application/json",
   });
 }
@@ -51,6 +52,7 @@ export async function saveHistoryRun(summary: RunSummary) {
   await put(`perf/history/${safeRunId}.json`, JSON.stringify(summary, null, 2), {
     access: "private",
     addRandomSuffix: false,
+    allowOverwrite: true,
     contentType: "application/json",
   });
 }
