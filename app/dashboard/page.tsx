@@ -263,9 +263,7 @@ export default async function DashboardPage({
                 >
                   <td style={td}>
                     <a
-                      href={result.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={`/dashboard/history/${encodeURIComponent(result.hostname)}`}
                       style={{ color: "var(--link)", textDecoration: "none", fontWeight: 500, fontSize: 13 }}
                     >
                       {result.hostname}{result.path !== "/" ? result.path : ""}

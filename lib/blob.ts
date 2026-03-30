@@ -1,7 +1,43 @@
 import { del, list, put } from "@vercel/blob";
-import type { RunSummary } from "@/lib/types";
+import type { CheckResult, RunSummary } from "@/lib/types";
 
-export async function saveLatestRun(summary: RunSummary) {
+export type HistoryEntry = {
+  runId: string;
+  generatedAt: string;
+  result: CheckResult;
+};
+
+export async function getHistoryForHostname(hostname: string): Promise<HistoryEntry[]> {
+  const items = await list({ prefix: "perf/history/" });
+  const sorted = [...items.blobs].sort(
+    (a, b) => new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime()
+  );
+
+  const entries: HistoryEntry[] = [];
+
+  await Promise.all(
+    sorted.map(async (blob) => {
+      const res = await fetch(blob.url, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+      });
+      if (!res.ok) return;
+
+      const summary = (await res.json()) as RunSummary;
+      const matching = summary.results.filter((r) => r.hostname === hostname);
+      matching.forEach((result) =>
+        entries.push({ runId: summary.runId, generatedAt: summary.generatedAt, result })
+      );
+    })
+  );
+
+  // Sort oldest → newest for the chart
+  return entries.sort(
+    (a, b) => new Date(a.generatedAt).getTime() - new Date(b.generatedAt).getTime()
+  );
+}
+
+export async function pruneHistory(keep = 20) {
   await put("perf/latest.json", JSON.stringify(summary, null, 2), {
     access: "private",
     addRandomSuffix: false,
