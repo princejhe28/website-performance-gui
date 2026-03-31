@@ -4,6 +4,9 @@ import ThemeProvider from "./theme-provider";
 export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_APP_NAME || "Website Performance Dashboard",
   description: "Website performance monitoring dashboard",
+  verification: {
+    google: "hMp6jt0I7fHt0uaIwr2CNUJUVbj30NhkeMazDHnqa6Q",
+  },
 };
 
 export default function RootLayout({
