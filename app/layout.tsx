@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import ThemeProvider from "./theme-provider";
 import "./globals.css";
 
@@ -19,7 +18,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <Script src="/theme-init.js" strategy="beforeInteractive" />
+        {/* Anti-FOUC: set theme before first paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=localStorage.getItem('theme');if(!t){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;})();`,
+          }}
+        />
       </head>
       <body>
         <ThemeProvider>
