@@ -1,6 +1,6 @@
 import { getLatestRun } from "@/lib/blob";
 import type { CheckResult, RunSummary } from "@/lib/types";
-import { Suspense } from "react";
+import { Suspense, Fragment } from "react";
 import Filters from "./filters";
 import LogoutButton from "./logout-button";
 import ThemeToggle from "./theme-toggle";
@@ -154,11 +154,20 @@ export default async function DashboardPage({
     return true;
   });
 
-  // Pagination
+  // Group filtered results by site (hostname + path)
+  const groupedMap = new Map<string, CheckResult[]>();
+  for (const r of filtered) {
+    const key = `${r.hostname}${r.path !== "/" ? r.path : ""}`;
+    if (!groupedMap.has(key)) groupedMap.set(key, []);
+    groupedMap.get(key)!.push(r);
+  }
+  const groups = Array.from(groupedMap.values());
+
+  // Paginate by site
   const page = Math.max(1, parseInt(params.page ?? "1", 10));
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(groups.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const paginatedGroups = groups.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const passRate = Math.round((summary.passCount / summary.totalChecks) * 100);
 
@@ -246,58 +255,80 @@ export default async function DashboardPage({
             </tr>
           </thead>
           <tbody>
-            {paginated.length === 0 ? (
+            {paginatedGroups.length === 0 ? (
               <tr>
                 <td colSpan={8} style={{ padding: 32, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
                   No results match your filters.
                 </td>
               </tr>
             ) : (
-              paginated.map((result, index) => (
-                <tr
-                  key={`${result.url}-${result.strategy}-${index}`}
-                  style={{
-                    borderTop: "1px solid var(--border)",
-                    background: result.status === "fail" ? "var(--bg-fail-row)" : "var(--bg-card)",
-                  }}
-                >
-                  <td style={td}>
-                    <a
-                      href={`/dashboard/history/${encodeURIComponent(result.hostname)}`}
-                      style={{ color: "var(--link)", textDecoration: "none", fontWeight: 500, fontSize: 13 }}
-                    >
-                      {result.hostname}{result.path !== "/" ? result.path : ""}
-                    </a>
-                  </td>
-                  <td style={{ ...td, textAlign: "center" }}><StrategyBadge strategy={result.strategy} /></td>
-                  <td style={{ ...td, textAlign: "center" }}>
-                    <div style={{ display: "flex", justifyContent: "center" }}>
-                      <ScoreRing score={result.performanceScore} />
-                    </div>
-                  </td>
-                  <td style={{ ...td, color: result.lcpMs > 2500 ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
-                    {Math.round(result.lcpMs)} ms
-                  </td>
-                  <td style={{ ...td, color: result.cls > 0.1 ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
-                    {result.cls.toFixed(3)}
-                  </td>
-                  <td style={{ ...td, color: result.tbtMs > 300 ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
-                    {Math.round(result.tbtMs)} ms
-                  </td>
-                  <td style={{ ...td, textAlign: "center" }}><StatusBadge status={result.status} /></td>
-                  <td style={td}>
-                    {result.issues.length > 0 ? (
-                      <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: "#dc2626" }}>
-                        {result.issues.map((issue, i) => (
-                          <li key={i} style={{ marginBottom: 2 }}>{issue}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <span style={{ color: "var(--text-muted)", fontSize: 13 }}>—</span>
+              paginatedGroups.map((group) => {
+                const mobile = group.find((r) => r.strategy === "mobile");
+                const desktop = group.find((r) => r.strategy === "desktop");
+                const first = group[0];
+                const rowCount = (mobile ? 1 : 0) + (desktop ? 1 : 0);
+                const siteKey = `${first.hostname}${first.path !== "/" ? first.path : ""}`;
+                const siteHref = `/dashboard/history/${encodeURIComponent(first.hostname)}`;
+                const allIssues = group.flatMap((r) =>
+                  r.issues.map((issue) => ({ strategy: r.strategy, issue }))
+                );
+
+                const renderRow = (r: CheckResult, isFirst: boolean) => (
+                  <tr
+                    key={`${r.url}-${r.strategy}`}
+                    style={{
+                      borderTop: "1px solid var(--border)",
+                      background: r.status === "fail" ? "var(--bg-fail-row)" : "var(--bg-card)",
+                    }}
+                  >
+                    {isFirst && (
+                      <td rowSpan={rowCount} style={{ ...td, verticalAlign: "middle", borderRight: "1px solid var(--border)" }}>
+                        <a href={siteHref} style={{ color: "var(--link)", textDecoration: "none", fontWeight: 500, fontSize: 13 }}>
+                          {siteKey}
+                        </a>
+                      </td>
                     )}
-                  </td>
-                </tr>
-              ))
+                    <td style={{ ...td, textAlign: "center" }}><StrategyBadge strategy={r.strategy} /></td>
+                    <td style={{ ...td, textAlign: "center" }}>
+                      <div style={{ display: "flex", justifyContent: "center" }}>
+                        <ScoreRing score={r.performanceScore} />
+                      </div>
+                    </td>
+                    <td style={{ ...td, color: r.lcpMs > 2500 ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
+                      {Math.round(r.lcpMs)} ms
+                    </td>
+                    <td style={{ ...td, color: r.cls > 0.1 ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
+                      {r.cls.toFixed(3)}
+                    </td>
+                    <td style={{ ...td, color: r.tbtMs > 300 ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
+                      {Math.round(r.tbtMs)} ms
+                    </td>
+                    <td style={{ ...td, textAlign: "center" }}><StatusBadge status={r.status} /></td>
+                    {isFirst && (
+                      <td rowSpan={rowCount} style={{ ...td, verticalAlign: "top" }}>
+                        {allIssues.length > 0 ? (
+                          <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: "#dc2626" }}>
+                            {allIssues.map(({ strategy, issue }, i) => (
+                              <li key={i} style={{ marginBottom: 2 }}>
+                                <span style={{ fontWeight: 600 }}>{strategy === "mobile" ? "📱" : "🖥️"}</span> {issue}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)", fontSize: 13 }}>—</span>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+
+                return (
+                  <Fragment key={siteKey}>
+                    {mobile && renderRow(mobile, true)}
+                    {desktop && renderRow(desktop, !mobile)}
+                  </Fragment>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -315,7 +346,7 @@ export default async function DashboardPage({
             }}
           >
             <span style={{ color: "var(--text-secondary)" }}>
-              Page {currentPage} of {totalPages} &mdash; {filtered.length} results
+              Page {currentPage} of {totalPages} &mdash; {groups.length} sites
             </span>
             <div style={{ display: "flex", gap: 8 }}>
               <PageLink

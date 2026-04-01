@@ -1,6 +1,6 @@
 import urls from "@/config/urls.json";
 import { createAsanaTask } from "@/lib/asana";
-import { saveLatestStrategyRun, saveHistoryRun, pruneHistory } from "@/lib/blob";
+import { saveLatestBatchRun, saveHistoryRun, pruneHistory } from "@/lib/blob";
 import { pushMetricsToGrafana } from "@/lib/grafana";
 import { getPsiMetrics } from "@/lib/psi";
 import { findIssues } from "@/lib/thresholds";
@@ -33,11 +33,13 @@ function isAuthorized(req: Request) {
   return bearer && bearer === process.env.CRON_SECRET;
 }
 
-async function runChecks(strategy: Strategy): Promise<RunSummary> {
+async function runChecks(strategy: Strategy, batch: number): Promise<RunSummary> {
   const generatedAt = new Date().toISOString();
-  const runId = `vercel-${strategy}-${generatedAt}`;
+  const runId = `vercel-${strategy}-${batch}-${generatedAt}`;
 
-  const pairs = urls.map((url) => ({ url, strategy }));
+  const batchSize = Math.ceil(urls.length / 2);
+  const batchUrls = urls.slice(batch * batchSize, (batch + 1) * batchSize);
+  const pairs = batchUrls.map((url) => ({ url, strategy }));
 
   const settled = await runWithConcurrency(
     pairs.map(({ url, strategy }) => async () => {
@@ -104,13 +106,14 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const strategyParam = searchParams.get("strategy");
   const strategy: Strategy = strategyParam === "desktop" ? "desktop" : "mobile";
+  const batch = searchParams.get("batch") === "1" ? 1 : 0;
 
   try {
-    const summary = await runChecks(strategy);
+    const summary = await runChecks(strategy, batch);
     const warnings: string[] = [];
 
     try {
-      await saveLatestStrategyRun(summary, strategy);
+      await saveLatestBatchRun(summary, strategy, batch);
       await saveHistoryRun(summary);
       await pruneHistory(20);
     } catch (err) {

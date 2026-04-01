@@ -37,6 +37,15 @@ export async function getHistoryForHostname(hostname: string): Promise<HistoryEn
   );
 }
 
+export async function saveLatestBatchRun(summary: RunSummary, strategy: Strategy, batch: number) {
+  await put(`perf/latest-${strategy}-${batch}.json`, JSON.stringify(summary, null, 2), {
+    access: "private",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: "application/json",
+  });
+}
+
 export async function saveLatestStrategyRun(summary: RunSummary, strategy: Strategy) {
   await put(`perf/latest-${strategy}.json`, JSON.stringify(summary, null, 2), {
     access: "private",
@@ -69,19 +78,37 @@ export async function saveHistoryRun(summary: RunSummary) {
 export async function getLatestRun(): Promise<RunSummary | null> {
   const items = await list({ prefix: "perf/latest" });
 
+  // Batched format: merge mobile-0, mobile-1, desktop-0, desktop-1
+  const batchBlobs = ["mobile-0", "mobile-1", "desktop-0", "desktop-1"]
+    .map((key) => items.blobs.find((b) => b.pathname === `perf/latest-${key}.json`))
+    .filter((b): b is NonNullable<typeof b> => b !== undefined);
+
+  if (batchBlobs.length > 0) {
+    const parts = (await Promise.all(batchBlobs.map((b) => fetchBlobJson(b.url))))
+      .filter((s): s is RunSummary => s !== null);
+    if (parts.length === 0) return null;
+    const allResults = parts.flatMap((s) => s.results);
+    const base = parts[parts.length - 1];
+    return {
+      ...base,
+      totalChecks: allResults.length,
+      passCount: allResults.filter((r) => r.status === "pass").length,
+      failCount: allResults.filter((r) => r.status === "fail").length,
+      asanaTasksCreated: parts.reduce((sum, s) => sum + s.asanaTasksCreated, 0),
+      results: allResults,
+    };
+  }
+
+  // Legacy per-strategy format (mobile/desktop without batch)
   const mobileBlob = items.blobs.find((b) => b.pathname === "perf/latest-mobile.json");
   const desktopBlob = items.blobs.find((b) => b.pathname === "perf/latest-desktop.json");
-
-  // Split-strategy format: merge mobile + desktop into one RunSummary
   if (mobileBlob || desktopBlob) {
     const [mobile, desktop] = await Promise.all([
       mobileBlob ? fetchBlobJson(mobileBlob.url) : null,
       desktopBlob ? fetchBlobJson(desktopBlob.url) : null,
     ]);
-
     const parts = [mobile, desktop].filter((s): s is RunSummary => s !== null);
     if (parts.length === 0) return null;
-
     const allResults = parts.flatMap((s) => s.results);
     const base = parts[parts.length - 1];
     return {
