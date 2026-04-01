@@ -1,5 +1,5 @@
 import { del, list, put } from "@vercel/blob";
-import type { CheckResult, RunSummary } from "@/lib/types";
+import type { CheckResult, RunSummary, Strategy } from "@/lib/types";
 
 export type HistoryEntry = {
   runId: string;
@@ -37,6 +37,15 @@ export async function getHistoryForHostname(hostname: string): Promise<HistoryEn
   );
 }
 
+export async function saveLatestStrategyRun(summary: RunSummary, strategy: Strategy) {
+  await put(`perf/latest-${strategy}.json`, JSON.stringify(summary, null, 2), {
+    access: "private",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: "application/json",
+  });
+}
+
 export async function saveLatestRun(summary: RunSummary) {
   await put("perf/latest.json", JSON.stringify(summary, null, 2), {
     access: "private",
@@ -58,17 +67,45 @@ export async function saveHistoryRun(summary: RunSummary) {
 }
 
 export async function getLatestRun(): Promise<RunSummary | null> {
-  const items = await list({ prefix: "perf/latest.json" });
-  const latest = items.blobs.find((b) => b.pathname === "perf/latest.json");
+  const items = await list({ prefix: "perf/latest" });
 
-  if (!latest?.url) return null;
+  const mobileBlob = items.blobs.find((b) => b.pathname === "perf/latest-mobile.json");
+  const desktopBlob = items.blobs.find((b) => b.pathname === "perf/latest-desktop.json");
 
-  const res = await fetch(latest.url, {
+  // Split-strategy format: merge mobile + desktop into one RunSummary
+  if (mobileBlob || desktopBlob) {
+    const [mobile, desktop] = await Promise.all([
+      mobileBlob ? fetchBlobJson(mobileBlob.url) : null,
+      desktopBlob ? fetchBlobJson(desktopBlob.url) : null,
+    ]);
+
+    const parts = [mobile, desktop].filter((s): s is RunSummary => s !== null);
+    if (parts.length === 0) return null;
+
+    const allResults = parts.flatMap((s) => s.results);
+    const base = parts[parts.length - 1];
+    return {
+      ...base,
+      totalChecks: allResults.length,
+      passCount: allResults.filter((r) => r.status === "pass").length,
+      failCount: allResults.filter((r) => r.status === "fail").length,
+      asanaTasksCreated: parts.reduce((sum, s) => sum + s.asanaTasksCreated, 0),
+      results: allResults,
+    };
+  }
+
+  // Legacy single-run format
+  const legacyBlob = items.blobs.find((b) => b.pathname === "perf/latest.json");
+  if (!legacyBlob?.url) return null;
+  return fetchBlobJson(legacyBlob.url);
+}
+
+async function fetchBlobJson(url: string): Promise<RunSummary | null> {
+  const res = await fetch(url, {
     cache: "no-store",
     headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
   });
   if (!res.ok) return null;
-
   return (await res.json()) as RunSummary;
 }
 

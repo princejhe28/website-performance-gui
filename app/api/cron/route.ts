@@ -1,13 +1,13 @@
 import urls from "@/config/urls.json";
 import { createAsanaTask } from "@/lib/asana";
-import { saveHistoryRun, saveLatestRun, pruneHistory } from "@/lib/blob";
+import { saveLatestStrategyRun, saveHistoryRun, pruneHistory } from "@/lib/blob";
 import { pushMetricsToGrafana } from "@/lib/grafana";
 import { getPsiMetrics } from "@/lib/psi";
 import { findIssues } from "@/lib/thresholds";
 import type { CheckResult, RunSummary, Strategy } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 120;
 
 // Run at most `concurrency` promises at a time, with a pause between batches
 async function runWithConcurrency<T>(
@@ -33,12 +33,11 @@ function isAuthorized(req: Request) {
   return bearer && bearer === process.env.CRON_SECRET;
 }
 
-async function runChecks(): Promise<RunSummary> {
-  const strategies: Strategy[] = ["mobile", "desktop"];
+async function runChecks(strategy: Strategy): Promise<RunSummary> {
   const generatedAt = new Date().toISOString();
-  const runId = `vercel-${generatedAt}`;
+  const runId = `vercel-${strategy}-${generatedAt}`;
 
-  const pairs = urls.flatMap((url) => strategies.map((strategy) => ({ url, strategy })));
+  const pairs = urls.map((url) => ({ url, strategy }));
 
   const settled = await runWithConcurrency(
     pairs.map(({ url, strategy }) => async () => {
@@ -102,12 +101,16 @@ export async function GET(req: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { searchParams } = new URL(req.url);
+  const strategyParam = searchParams.get("strategy");
+  const strategy: Strategy = strategyParam === "desktop" ? "desktop" : "mobile";
+
   try {
-    const summary = await runChecks();
+    const summary = await runChecks(strategy);
     const warnings: string[] = [];
 
     try {
-      await saveLatestRun(summary);
+      await saveLatestStrategyRun(summary, strategy);
       await saveHistoryRun(summary);
       await pruneHistory(20);
     } catch (err) {

@@ -1,8 +1,12 @@
 {
   "crons": [
     {
-      "path": "/api/cron",
+      "path": "/api/cron?strategy=mobile",
       "schedule": "17 10 * * 0"
+    },
+    {
+      "path": "/api/cron?strategy=desktop",
+      "schedule": "22 10 * * 0"
     }
   ]
 }
