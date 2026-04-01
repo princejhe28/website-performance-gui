@@ -8,6 +8,33 @@ function getPath(url: string): string {
   return new URL(url).pathname || "/";
 }
 
+const RETRYABLE_CODES = new Set([500, 502, 503, 429]);
+const MAX_ATTEMPTS = 3;
+
+async function attemptPsiFetch(
+  endpoint: URL,
+  url: string,
+  strategy: Strategy
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 70_000);
+  try {
+    const res = await fetch(endpoint.toString(), {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    return res;
+  } catch (err) {
+    clearTimeout(timer);
+    const msg = err instanceof Error && err.name === "AbortError"
+      ? `PSI request timed out for ${url} (${strategy})`
+      : `PSI request failed for ${url} (${strategy}): ${err instanceof Error ? err.message : err}`;
+    throw new Error(msg);
+  }
+}
+
 export async function getPsiMetrics(
   url: string,
   strategy: Strategy
@@ -24,31 +51,25 @@ export async function getPsiMetrics(
   endpoint.searchParams.set("category", "performance");
   endpoint.searchParams.set("key", apiKey);
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 70_000);
+  let res: Response | undefined;
+  let lastError = "";
 
-  let res: Response;
-  try {
-    res = await fetch(endpoint.toString(), {
-      method: "GET",
-      cache: "no-store",
-      signal: controller.signal,
-    });
-  } catch (err) {
-    clearTimeout(timer);
-    const msg = err instanceof Error && err.name === "AbortError"
-      ? `PSI request timed out for ${url} (${strategy})`
-      : `PSI request failed for ${url} (${strategy}): ${err instanceof Error ? err.message : err}`;
-    throw new Error(msg);
-  }
-  clearTimeout(timer);
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    res = await attemptPsiFetch(endpoint, url, strategy);
+    if (res.ok) break;
 
-  if (!res.ok) {
     const body = await res.text();
-    throw new Error(`PSI request failed for ${url} (${strategy}): ${res.status} ${body}`);
+    lastError = `PSI request failed for ${url} (${strategy}): ${res.status} ${body}`;
+
+    if (!RETRYABLE_CODES.has(res.status) || attempt === MAX_ATTEMPTS) {
+      throw new Error(lastError);
+    }
+
+    // Fixed 5s pause before retry — short enough to stay within budget
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
   }
 
-  const data = await res.json();
+  const data = await res!.json();
   const lighthouse = data?.lighthouseResult;
   const audits = lighthouse?.audits || {};
 
