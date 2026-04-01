@@ -7,7 +7,7 @@ import { findIssues } from "@/lib/thresholds";
 import type { CheckResult, RunSummary, Strategy } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 function isAuthorized(req: Request) {
   const authHeader = req.headers.get("authorization");

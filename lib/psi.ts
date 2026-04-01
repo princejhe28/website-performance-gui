@@ -25,7 +25,7 @@ export async function getPsiMetrics(
   endpoint.searchParams.set("key", apiKey);
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 45_000);
+  const timer = setTimeout(() => controller.abort(), 30_000);
 
   let res: Response;
   try {
