@@ -7,13 +7,13 @@ import { findIssues } from "@/lib/thresholds";
 import type { CheckResult, RunSummary, Strategy } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 // Run at most `concurrency` promises at a time, with a pause between batches
 async function runWithConcurrency<T>(
   items: (() => Promise<T>)[],
   concurrency: number,
-  batchDelayMs = 1_000
+  batchDelayMs = 2_000
 ): Promise<PromiseSettledResult<T>[]> {
   const results: PromiseSettledResult<T>[] = [];
   for (let i = 0; i < items.length; i += concurrency) {
@@ -46,7 +46,7 @@ async function runChecks(strategy: Strategy): Promise<RunSummary> {
       const status = issues.length > 0 ? "fail" : "pass";
       return { ...baseMetrics, status, issues, checkedAt: generatedAt } as CheckResult;
     }),
-    4
+    2
   );
 
   const results: CheckResult[] = settled.map((outcome, i) => {
