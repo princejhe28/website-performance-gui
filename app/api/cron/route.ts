@@ -13,7 +13,7 @@ export const maxDuration = 300;
 async function runWithConcurrency<T>(
   items: (() => Promise<T>)[],
   concurrency: number,
-  batchDelayMs = 2_000
+  batchDelayMs = 1_000
 ): Promise<PromiseSettledResult<T>[]> {
   const results: PromiseSettledResult<T>[] = [];
   for (let i = 0; i < items.length; i += concurrency) {
@@ -47,7 +47,7 @@ async function runChecks(): Promise<RunSummary> {
       const status = issues.length > 0 ? "fail" : "pass";
       return { ...baseMetrics, status, issues, checkedAt: generatedAt } as CheckResult;
     }),
-    3
+    4
   );
 
   const results: CheckResult[] = settled.map((outcome, i) => {
