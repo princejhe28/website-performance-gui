@@ -9,16 +9,20 @@ import type { CheckResult, RunSummary, Strategy } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// Run at most `concurrency` promises at a time
+// Run at most `concurrency` promises at a time, with a pause between batches
 async function runWithConcurrency<T>(
   items: (() => Promise<T>)[],
-  concurrency: number
+  concurrency: number,
+  batchDelayMs = 2_000
 ): Promise<PromiseSettledResult<T>[]> {
   const results: PromiseSettledResult<T>[] = [];
   for (let i = 0; i < items.length; i += concurrency) {
     const batch = items.slice(i, i + concurrency);
     const batchResults = await Promise.allSettled(batch.map((fn) => fn()));
     results.push(...batchResults);
+    if (i + concurrency < items.length) {
+      await new Promise((resolve) => setTimeout(resolve, batchDelayMs));
+    }
   }
   return results;
 }
