@@ -4,10 +4,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_APP_NAME || "Website Performance Dashboard",
-  description: "Website performance monitoring dashboard",
+  description: "Private internal website performance monitoring dashboard.",
   verification: {
     google: "hMp6jt0I7fHt0uaIwr2CNUJUVbj30NhkeMazDHnqa6Q",
   },
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({

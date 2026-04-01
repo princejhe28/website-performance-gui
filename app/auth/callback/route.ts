@@ -47,5 +47,5 @@ export async function GET(request: Request) {
   }
 
   // Fallback — something went wrong, send back to login
-  return NextResponse.redirect(`${trustedOrigin}/?error=auth_callback_failed`);
+  return NextResponse.redirect(`${trustedOrigin}/login?error=auth_callback_failed`);
 }
