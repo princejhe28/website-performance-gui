@@ -9,6 +9,20 @@ import type { CheckResult, RunSummary, Strategy } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+// Run at most `concurrency` promises at a time
+async function runWithConcurrency<T>(
+  items: (() => Promise<T>)[],
+  concurrency: number
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = [];
+  for (let i = 0; i < items.length; i += concurrency) {
+    const batch = items.slice(i, i + concurrency);
+    const batchResults = await Promise.allSettled(batch.map((fn) => fn()));
+    results.push(...batchResults);
+  }
+  return results;
+}
+
 function isAuthorized(req: Request) {
   const authHeader = req.headers.get("authorization");
   const bearer = authHeader?.replace(/^Bearer\s+/i, "").trim();
@@ -22,13 +36,14 @@ async function runChecks(): Promise<RunSummary> {
 
   const pairs = urls.flatMap((url) => strategies.map((strategy) => ({ url, strategy })));
 
-  const settled = await Promise.allSettled(
-    pairs.map(async ({ url, strategy }) => {
+  const settled = await runWithConcurrency(
+    pairs.map(({ url, strategy }) => async () => {
       const baseMetrics = await getPsiMetrics(url, strategy);
       const issues = findIssues(baseMetrics);
       const status = issues.length > 0 ? "fail" : "pass";
       return { ...baseMetrics, status, issues, checkedAt: generatedAt } as CheckResult;
-    })
+    }),
+    3
   );
 
   const results: CheckResult[] = settled.map((outcome, i) => {
