@@ -16,8 +16,9 @@ async function attemptPsiFetch(
   url: string,
   strategy: Strategy
 ): Promise<Response> {
+  const timeoutMs = strategy === "mobile" ? 150_000 : 110_000;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 110_000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(endpoint.toString(), {
       method: "GET",
