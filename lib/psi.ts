@@ -17,7 +17,7 @@ async function attemptPsiFetch(
   strategy: Strategy
 ): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 70_000);
+  const timer = setTimeout(() => controller.abort(), 110_000);
   try {
     const res = await fetch(endpoint.toString(), {
       method: "GET",
