@@ -66,6 +66,7 @@ async function runChecks(strategy: Strategy, batch: number): Promise<RunSummary>
       tbtMs: 0,
       status: "fail",
       issues: [outcome.reason instanceof Error ? outcome.reason.message : "Unknown PSI check error"],
+      opportunities: [],
       checkedAt: generatedAt,
     } as CheckResult;
   });

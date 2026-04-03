@@ -1,4 +1,4 @@
-import type { CheckResult, Strategy } from "@/lib/types";
+import type { CheckResult, Opportunity, Strategy } from "@/lib/types";
 
 function getHostname(url: string): string {
   return new URL(url).hostname;
@@ -74,6 +74,17 @@ export async function getPsiMetrics(
   const lighthouse = data?.lighthouseResult;
   const audits = lighthouse?.audits || {};
 
+  const opportunities: Opportunity[] = Object.values(audits)
+    .filter((a: unknown) => {
+      const audit = a as { details?: { type?: string }; numericValue?: number };
+      return audit?.details?.type === "opportunity" && (audit?.numericValue ?? 0) > 0;
+    })
+    .map((a: unknown) => {
+      const audit = a as { title: string; numericValue: number };
+      return { title: audit.title, savingsMs: Math.round(audit.numericValue) };
+    })
+    .sort((x, y) => y.savingsMs - x.savingsMs);
+
   return {
     url,
     hostname: getHostname(url),
@@ -83,5 +94,6 @@ export async function getPsiMetrics(
     lcpMs: audits["largest-contentful-paint"]?.numericValue ?? 0,
     cls: audits["cumulative-layout-shift"]?.numericValue ?? 0,
     tbtMs: audits["total-blocking-time"]?.numericValue ?? 0,
+    opportunities,
   };
 }

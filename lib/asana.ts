@@ -1,6 +1,17 @@
 import type { CheckResult } from "@/lib/types";
 
 function buildTaskNotes(result: CheckResult): string {
+  const opportunityLines =
+    result.opportunities.length > 0
+      ? [
+          "",
+          "Opportunities:",
+          ...result.opportunities.map(
+            (o) => `- ${o.title} (~${Math.round(o.savingsMs / 100) / 10}s potential savings)`
+          ),
+        ]
+      : [];
+
   return [
     `URL: ${result.url}`,
     `Strategy: ${result.strategy}`,
@@ -13,6 +24,7 @@ function buildTaskNotes(result: CheckResult): string {
     "",
     "Threshold breaches:",
     ...result.issues.map((issue) => `- ${issue}`),
+    ...opportunityLines,
     "",
     "Source: Automated PageSpeed Insights check via Vercel Cron.",
   ].join("\n");

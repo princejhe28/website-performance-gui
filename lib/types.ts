@@ -1,6 +1,11 @@
 export type Strategy = "mobile" | "desktop";
 export type Status = "pass" | "fail";
 
+export type Opportunity = {
+  title: string;
+  savingsMs: number;
+};
+
 export type CheckResult = {
   url: string;
   hostname: string;
@@ -12,6 +17,7 @@ export type CheckResult = {
   tbtMs: number;
   status: Status;
   issues: string[];
+  opportunities: Opportunity[];
   checkedAt: string;
 };
 
